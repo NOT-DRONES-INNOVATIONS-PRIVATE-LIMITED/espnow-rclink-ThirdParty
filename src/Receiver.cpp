@@ -48,7 +48,8 @@ Receiver::Receiver()
 
 int Receiver::begin(bool enSoftAp)
 {
-  if(enSoftAp)
+  _softap = enSoftAp;
+  if (_softap)
   {
     if(!WiFi.softAP("ESPNOW-RX", nullptr, 0, 1)) return 0;
   }
@@ -60,6 +61,17 @@ int Receiver::begin(bool enSoftAp)
   WifiEspNow.onReceive(_handleRx, this);
 
   return 1;
+}
+
+void Receiver::end()
+{
+  WifiEspNow.end();
+  WifiEspNow.onReceive(nullptr, nullptr);
+  if (_softap)
+  {
+    WiFi.softAPdisconnect(true);
+    _softap = false;
+  }
 }
 
 int Receiver::update()

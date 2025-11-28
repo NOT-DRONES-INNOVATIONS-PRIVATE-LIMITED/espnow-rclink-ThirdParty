@@ -15,6 +15,7 @@ public:
 
   Receiver();
   int begin(bool enSoftAp = false);
+  void end();
   int update();
   int available();
   int16_t getChannel(int c) const;
@@ -36,6 +37,7 @@ private:
   uint32_t _next_alive = 0;
   State _state = BEACON;
   volatile bool _new_data = false;
+  bool _softap = false;
 };
 
 }

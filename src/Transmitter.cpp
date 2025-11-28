@@ -34,9 +34,11 @@ Transmitter::Transmitter(): _channel(WIFI_CHANNEL_DEFAULT) {}
 
 int Transmitter::begin(bool enSoftAp)
 {
-  if(enSoftAp)
+  _softap = enSoftAp;
+  if (_softap)
   {
     if(!WiFi.softAP("ESPNOW-TX", nullptr, _channel, 1)) return 0;
+    _softap = true;
   }
 
   if (!WifiEspNow.begin()) return 0;
@@ -44,6 +46,17 @@ int Transmitter::begin(bool enSoftAp)
   WifiEspNow.onReceive(_handleRx, this);
 
   return 1;
+}
+
+void Transmitter::end()
+{
+  WifiEspNow.end();
+  WifiEspNow.onReceive(nullptr, nullptr);
+  if (_softap)
+  {
+    WiFi.softAPdisconnect(true);
+    _softap = false;
+  }
 }
 
 int Transmitter::update()
