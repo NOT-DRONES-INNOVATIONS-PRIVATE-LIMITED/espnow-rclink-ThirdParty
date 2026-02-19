@@ -1,6 +1,14 @@
 #include "EspNowRcLink/Receiver.h"
 #include <limits>
 #include <algorithm>
+#include "Model.h"
+#include "ModelState.h"
+#include "EspNowRcLink/Receiver.h"
+#include "WiFiGeneric.h"
+
+
+// Espfc::Model& _model;
+Espfc::Utils::Logger logger;
 
 namespace EspNowRcLink {
 
@@ -19,6 +27,7 @@ void Receiver::_handleRx(const uint8_t *mac, const uint8_t *buf, size_t count, v
 
   if(count < PAYLOAD_SIZE_MIN || count > PAYLOAD_SIZE_MAX) return;
   if(checksum(buf, count - 1) != buf[count - 1]) return;
+
   auto dev = reinterpret_cast<Receiver*>(arg);
   if(!dev) return;
 
@@ -26,11 +35,16 @@ void Receiver::_handleRx(const uint8_t *mac, const uint8_t *buf, size_t count, v
   {
     std::copy_n(mac, WIFIESPNOW_ALEN, dev->_peer);
     dev->_state = PAIR;
+    return;
   }
   if(buf[0] == RC_DATA && dev->_state == RECEIVING && dev->_allowed(mac))
   {
     std::copy_n(buf, std::min((size_t)sizeof(MessageRc), count), (uint8_t*)&dev->_channels);
     dev->_new_data = true;
+
+    // mark link alive for disconnect detection
+    dev->_lastRcMs = (uint32_t)millis();
+    dev->_linkUp = true;
   }
 }
 
@@ -48,8 +62,8 @@ Receiver::Receiver()
 
 int Receiver::begin(bool enSoftAp)
 {
-  _softap = enSoftAp;
-  if (_softap)
+   
+  if(enSoftAp)
   {
     if(!WiFi.softAP("ESPNOW-RX", nullptr, 0, 1)) return 0;
   }
@@ -63,19 +77,20 @@ int Receiver::begin(bool enSoftAp)
   return 1;
 }
 
-void Receiver::end()
-{
-  WifiEspNow.end();
-  WifiEspNow.onReceive(nullptr, nullptr);
-  if (_softap)
-  {
-    WiFi.softAPdisconnect(true);
-    _softap = false;
-  }
-}
-
 int Receiver::update()
 {
+  if (_linkUp) 
+  {
+    uint32_t age = millis() - _lastRcMs;
+    if (age > RX_TIMEOUT_MS) 
+    {
+      _linkUp = false;
+      _new_data = false;
+      _state = BEACON; 
+      begin();
+    }
+  }
+
   switch(_state)
   {
     case BEACON:
@@ -101,7 +116,7 @@ void Receiver::_handleBeacon()
     _send(BCAST_PEER, m);
     _next_beacon = now + LINK_BEACON_INTERVAL_MS;
   }
-}
+}   
 
 void Receiver::_handlePair()
 {
