@@ -15,7 +15,6 @@ public:
 
   Transmitter();
   int begin(bool enSoftAp = false);
-  void end();
   int update();
   void setChannel(size_t c, unsigned int value);
   int getSensor(size_t sensorId) const;
@@ -38,7 +37,6 @@ private:
   State _state = DISCOVERING;
   std::queue<Message> _queue;
   bool _ready = false;
-  bool _softap = false;
 };
 
 }

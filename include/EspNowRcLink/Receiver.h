@@ -15,7 +15,6 @@ public:
 
   Receiver();
   int begin(bool enSoftAp = false);
-  void end();
   int update();
   int available();
   int16_t getChannel(int c) const;
@@ -37,7 +36,10 @@ private:
   uint32_t _next_alive = 0;
   State _state = BEACON;
   volatile bool _new_data = false;
-  bool _softap = false;
+
+  volatile uint32_t _lastRcMs = 0;
+  volatile bool _linkUp = false;
+  static constexpr uint32_t RX_TIMEOUT_MS = 500; // tune: 200–500ms typical
 };
 
 }
